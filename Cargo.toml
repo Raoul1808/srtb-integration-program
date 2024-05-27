@@ -8,3 +8,4 @@ members = [
 
 [workspace.dependencies]
 srtb-integration = { path = "srtb-integration" }
+rfd = "0.14.1"
