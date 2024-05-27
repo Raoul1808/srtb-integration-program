@@ -98,6 +98,7 @@ fn main() {
             chart.save(&save_location).unwrap();
             println!("Saved to {}", save_location.display());
         }
+        4 => {}
         _ => unreachable!(),
     }
 }
