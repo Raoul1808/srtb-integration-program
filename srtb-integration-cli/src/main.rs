@@ -1,11 +1,14 @@
 use std::{fs, io::Write};
 
 use rfd::FileDialog;
-use srtb_integration::{Integrator, RawSrtbFile, SpeedsIntegrator, SpinDifficulty};
+use srtb_integration::{
+    ChromaIntegrator, Integrator, RawSrtbFile, SpeedsIntegrator, SpinDifficulty,
+};
 
 fn main() {
     println!("Please select the integration mode");
     println!("1. Speed Triggers (Dynamic Track Speed)");
+    println!("2. Chroma Triggers (Speen Chroma 2)");
     print!("> ");
     std::io::stdout().flush().expect("failed to flush stdout");
 
@@ -17,6 +20,7 @@ fn main() {
     let opt: usize = buf.trim().parse().expect("invalid integer");
     let integrator: Box<dyn Integrator> = match opt {
         1 => Box::new(SpeedsIntegrator),
+        2 => Box::new(ChromaIntegrator),
         _ => panic!("invalid option"),
     };
 

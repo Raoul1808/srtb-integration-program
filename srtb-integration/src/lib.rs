@@ -1,9 +1,14 @@
+use color::ColorError;
 use strum::Display;
 use thiserror::Error;
 
+pub(crate) mod color;
+
+mod chroma;
 mod speeds;
 mod srtb;
 
+pub use chroma::ChromaIntegrator;
 pub use speeds::SpeedsIntegrator;
 pub use srtb::RawSrtbFile;
 
@@ -56,15 +61,36 @@ pub enum IntegrationError {
     #[error("json serialization error: {0}")]
     SerdeJsonError(serde_json::Error),
 
-    #[error("parsing error at line {0}: not enough arguments")]
-    ArgumentsMissing(usize),
-
-    #[error("parsing error at line {0}: invalid floating-point number")]
-    InvalidFloat(usize),
-
-    #[error("parsing error at line {0}: invalid boolean")]
-    InvalidBool(usize),
+    #[error("parsing error on line {0}: {1}")]
+    ParsingError(usize, ParsingError),
 
     #[error("no integrated data found")]
     MissingData,
+}
+
+#[derive(Error, Debug)]
+pub enum ParsingError {
+    #[error("not enough arguments")]
+    MissingArguments,
+
+    #[error("color error: {0}")]
+    ColorError(ColorError),
+
+    #[error("invalid floating-point number: {0}")]
+    InvalidFloat(String),
+
+    #[error("invalid boolean: {0}")]
+    InvalidBool(String),
+
+    #[error("invalid note type: {0}")]
+    InvalidNote(String),
+
+    #[error("no default color for note type {0}")]
+    NoDefaultColorForNote(String),
+
+    #[error("no trigger in store for note type {0}")]
+    NoTriggerForNote(String),
+
+    #[error("unrecognized command: {0}")]
+    UnrecognizedCommand(String),
 }

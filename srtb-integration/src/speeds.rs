@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
-use crate::{srtb::RawSrtbFile, IntegrationError, Integrator, SpinDifficulty};
+use crate::{srtb::RawSrtbFile, IntegrationError, Integrator, ParsingError, SpinDifficulty};
 
 const SRTB_KEY: &str = "SpeedHelper_SpeedTriggers";
 
@@ -29,19 +29,25 @@ fn text_to_speeds(data: &str) -> Result<SpeedTriggersData, IntegrationError> {
         }
         let line: Vec<_> = line.split_whitespace().collect();
         if line.len() < 2 {
-            return Err(IntegrationError::ArgumentsMissing(line_number));
+            return Err(IntegrationError::ParsingError(
+                line_number,
+                ParsingError::MissingArguments,
+            ));
         }
 
-        let time = line[0]
-            .parse()
-            .map_err(|_| IntegrationError::InvalidFloat(line_number))?;
-        let speed_multiplier = line[1]
-            .parse()
-            .map_err(|_| IntegrationError::InvalidFloat(line_number))?;
+        let time = line[0].parse().map_err(|_| {
+            IntegrationError::ParsingError(line_number, ParsingError::InvalidFloat(line[0].into()))
+        })?;
+        let speed_multiplier = line[1].parse().map_err(|_| {
+            IntegrationError::ParsingError(line_number, ParsingError::InvalidFloat(line[1].into()))
+        })?;
         let interpolate = if line.len() >= 3 {
-            line[2]
-                .parse()
-                .map_err(|_| IntegrationError::InvalidBool(line_number))?
+            line[2].parse().map_err(|_| {
+                IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::InvalidBool(line[2].into()),
+                )
+            })?
         } else {
             false
         };
