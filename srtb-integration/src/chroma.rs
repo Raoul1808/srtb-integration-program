@@ -67,6 +67,7 @@ impl Display for ChromaNoteType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct ChromaTrigger {
     time: f32,
     duration: f32,
@@ -74,7 +75,25 @@ struct ChromaTrigger {
     end_color: HslColor,
 }
 
+impl ChromaTrigger {
+    pub fn ensure_smooth_transition(&mut self) {
+        if self.start_color.h == 0.
+            && self.end_color.h != 0.
+            && (self.start_color.s == 0. || self.start_color.l == 1.)
+        {
+            self.start_color.h = self.end_color.h;
+        }
+        if self.end_color.h == 0.
+            && self.start_color.h != 0.
+            && (self.end_color.s == 0. || self.end_color.l == 1.)
+        {
+            self.end_color.h = self.start_color.h;
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
 struct ChromaTriggersData {
     note_a: Vec<ChromaTrigger>,
     note_b: Vec<ChromaTrigger>,
@@ -347,15 +366,14 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                 let end_color = get_color(&default_colors, note_type, line[4])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                chroma_data
-                    .get_mut(&note_type)
-                    .unwrap()
-                    .push(ChromaTrigger {
-                        time: start_time,
-                        duration: end_time - start_time,
-                        start_color,
-                        end_color,
-                    });
+                let mut trigger = ChromaTrigger {
+                    time: start_time,
+                    duration: end_time - start_time,
+                    start_color,
+                    end_color,
+                };
+                trigger.ensure_smooth_transition();
+                chroma_data.get_mut(&note_type).unwrap().push(trigger);
             }
         }
     }
