@@ -122,7 +122,7 @@ pub enum ColorError {
 
 #[cfg(test)]
 mod test {
-    use super::{HslColor, RgbColor};
+    use super::{ColorError, HslColor, RgbColor};
 
     #[test]
     fn hsl_to_rgb() {
@@ -192,5 +192,14 @@ mod test {
             l: 0.5980392,
         };
         assert_eq!(expected_col, col.into());
+    }
+
+    #[test]
+    fn hex_to_rgb() -> Result<(), ColorError> {
+        let col = RgbColor::from_hex_str("#1f1e33")?;
+        let expected_col = RgbColor::from_hex(0x1f1e33);
+        assert_eq!(col, expected_col);
+
+        Ok(())
     }
 }
