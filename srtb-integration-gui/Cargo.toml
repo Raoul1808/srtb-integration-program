@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 iced = "0.12.1"
+rfd = { workspace = true }
+srtb-integration = { workspace = true }
+strum = { workspace = true }

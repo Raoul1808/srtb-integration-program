@@ -12,7 +12,7 @@ pub use chroma::ChromaIntegrator;
 pub use speeds::SpeedsIntegrator;
 pub use srtb::RawSrtbFile;
 
-#[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, Default, Display, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum SpinDifficulty {
     Easy,
     Normal,
@@ -20,6 +20,7 @@ pub enum SpinDifficulty {
     Expert,
     XD,
     RemiXD,
+    #[default]
     #[strum(serialize = "All Difficulties")]
     AllDifficulties,
 }
@@ -66,6 +67,9 @@ pub enum IntegrationError {
 
     #[error("no integrated data found")]
     MissingData,
+
+    #[error("operation cancelled")]
+    Cancelled,
 }
 
 #[derive(Error, Debug)]
