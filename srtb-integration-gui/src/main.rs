@@ -134,9 +134,9 @@ impl Sandbox for App {
         Self {
             integrator_state: combo_box::State::new(IntegratorKind::ALL.to_vec()),
             difficulty_state: combo_box::State::new(SpinDifficulty::ALL.to_vec()),
-            integrator_kind: Some(IntegratorKind::Speeds),
-            difficulty: Some(SpinDifficulty::AllDifficulties),
-            operation: Some(OperationKind::Integrate),
+            integrator_kind: None,
+            difficulty: None,
+            operation: None,
             input_file: None,
             extra_file: None,
         }
