@@ -6,8 +6,22 @@ members = [
     "srtb-integration-gui",
 ]
 
+[workspace.package]
+version = "2.0.0"
+edition = "2021"
+authors = ["Raoul1808"]
+license = "MIT"
+repository = "https://github.com/Raoul1808/srtb-integration-program"
+
 [workspace.dependencies]
 srtb-integration = { path = "srtb-integration" }
 
 rfd = "0.14.1"
 strum = { version = "0.26.2", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true
+codegen-units = 1
+incremental = false

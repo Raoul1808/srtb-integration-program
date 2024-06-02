@@ -1,7 +1,11 @@
 [package]
 name = "srtb-integration-gui"
-version = "0.1.0"
-edition = "2021"
+description = "A GUI frontend for SRTB integration"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 iced = "0.12.1"

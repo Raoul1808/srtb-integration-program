@@ -1,7 +1,11 @@
 [package]
 name = "srtb-integration"
-version = "0.1.0"
-edition = "2021"
+description = "SRTB integration library"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 serde = { version = "1.0.201", features = ["derive"] }
