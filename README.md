@@ -11,8 +11,7 @@ Pre-requisites:
 
 Steps:
 1. Clone this repo
-2. Run `cargo build` or `cargo run` in a terminal
-    - If you want to build/use the gui version, add the `--features gui` flag to the command(s) above.
+2. Run `cargo build` or `cargo run --package <srtb-integration-cli|srtb-integration-gui>` in a terminal
 3. Profit
 
 ## License
