@@ -13,7 +13,7 @@ use strum::Display;
 
 fn main() -> iced::Result {
     let mut settings = Settings::default();
-    settings.window.size = Size::new(360., 500.);
+    settings.window.size = Size::new(360., 512.);
     App::run(settings)
 }
 
@@ -295,7 +295,10 @@ impl Sandbox for App {
             .spacing(40)
             .align_items(Alignment::Center);
 
-        container(content_col)
+        let version = text(format!("v{}", env!("CARGO_PKG_VERSION"))).size(10);
+        let col = column![content_col, version].spacing(10.);
+
+        container(col)
             .padding(20.)
             .width(Length::Fill)
             .height(Length::Fill)
