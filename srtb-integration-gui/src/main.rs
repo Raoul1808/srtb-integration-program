@@ -11,6 +11,8 @@ use srtb_integration::{
 };
 use strum::Display;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn main() -> iced::Result {
     let mut settings = Settings::default();
     settings.window.size = Size::new(360., 512.);
@@ -295,7 +297,7 @@ impl Sandbox for App {
             .spacing(40)
             .align_items(Alignment::Center);
 
-        let version = text(format!("v{}", env!("CARGO_PKG_VERSION"))).size(10);
+        let version = text(format!("v{}", VERSION)).size(10);
         let col = column![content_col, version].spacing(10.);
 
         container(col)
