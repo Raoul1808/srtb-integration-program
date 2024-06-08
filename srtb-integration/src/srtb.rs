@@ -28,6 +28,7 @@ struct LargeStringValue {
 pub struct RawSrtbFile {
     unity_object_values_container: ValuesContainer<UnityObjectValue>,
     large_string_values_container: ValuesContainer<LargeStringValue>,
+    clip_info_count: Option<i32>,
 }
 
 impl RawSrtbFile {
