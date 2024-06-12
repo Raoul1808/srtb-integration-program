@@ -1,6 +1,10 @@
 name: Deploy WASM
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  create:
+    tags:
+    - '*'
 
 permissions:
   contents: write
