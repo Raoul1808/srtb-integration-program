@@ -36,4 +36,5 @@ jobs:
       with:
         toolchain: stable
         target: wasm32-unknown-unknown
+    - uses: actions/checkout@v4
     - run: cargo clippy --target wasm32-unknown-unknown --all -- -D warnings
