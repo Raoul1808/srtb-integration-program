@@ -27,10 +27,13 @@ wasm-bindgen-futures = "0.4.41"
 version = "0.3"
 features = [
     "Blob",
+    "BlobPropertyBag",
     "Document",
     "Element",
     "File",
     "FileList",
     "FileReader",
     "HtmlAnchorElement",
+    "HtmlInputElement",
+    "Url",
 ]
