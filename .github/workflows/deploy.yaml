@@ -1,0 +1,32 @@
+name: Deploy WASM
+
+on: workflow_dispatch
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release-wasm:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        target: wasm32-unknown-unknown
+    
+    - uses: jetli/trunk-action@v0.5.0
+    - uses: jetli/wasm-bindgen-action@v0.2.0
+
+    - uses: actions/checkout@v4
+    - run: sudo apt install -y libgtk-3-dev
+    - name: Build wasm
+      run: |
+        cd srtb-integration-gui
+        trunk build --release
+    
+    - uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: $
+        publish_dir: ./srtb-integration-gui/dist
