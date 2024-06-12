@@ -1,6 +1,10 @@
 name: Build Release
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  create:
+    tags:
+      - '*'
 
 env:
   CARGO_TERM_COLOR: always
