@@ -9,6 +9,8 @@ use srtb_integration::{
 };
 use strum::Display;
 
+use super::file::save_file;
+
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn program() -> iced::Result {
@@ -152,46 +154,36 @@ impl App {
             IntegratorKind::Chroma => Box::new(ChromaIntegrator),
         };
         let mut chart = RawSrtbFile::from_bytes(in_file.content.as_bytes())?;
+        let in_file_no_ext = in_file.name.strip_suffix(".srtb").unwrap_or(&in_file.name);
         match op {
             OperationKind::Integrate => {
                 let data = &extra.unwrap().content;
                 integrator.integrate(&mut chart, data, diff)?;
-                let dest_file = rfd::AsyncFileDialog::new()
-                    .add_filter("Spin Rhythm Track Bundle", &["srtb"])
-                    .save_file()
-                    .await
-                    .ok_or(IntegrationError::Cancelled)?;
-                dest_file
-                    .write(&chart.to_bytes()?)
-                    .await
-                    .map_err(IntegrationError::IoError)?;
+                let filename = format!(
+                    "{}_INTEGRATED_{}.srtb",
+                    in_file_no_ext,
+                    integrator_kind.to_string().to_uppercase()
+                );
+                save_file(&filename, &chart.to_bytes()?);
             }
             OperationKind::Extract => {
                 let data = integrator.extract(&chart, diff)?;
-                let dest_file = rfd::AsyncFileDialog::new()
-                    .add_filter(
-                        format!("{} triggers file", integrator_kind),
-                        &[integrator_kind.ext()],
-                    )
-                    .save_file()
-                    .await
-                    .ok_or(IntegrationError::Cancelled)?;
-                dest_file
-                    .write(data.as_bytes())
-                    .await
-                    .map_err(IntegrationError::IoError)?;
+                let filename = format!(
+                    "{}_EXTRACTED_{}.{}",
+                    in_file_no_ext,
+                    integrator_kind.to_string().to_uppercase(),
+                    integrator_kind.ext()
+                );
+                save_file(&filename, data.as_bytes());
             }
             OperationKind::Remove => {
                 integrator.remove(&mut chart, diff)?;
-                let dest_file = rfd::AsyncFileDialog::new()
-                    .add_filter("Spin Rhythm Track Bundle", &["srtb"])
-                    .save_file()
-                    .await
-                    .ok_or(IntegrationError::Cancelled)?;
-                dest_file
-                    .write(&chart.to_bytes()?)
-                    .await
-                    .map_err(IntegrationError::IoError)?;
+                let filename = format!(
+                    "{}_REMOVED_{}.srtb",
+                    in_file_no_ext,
+                    integrator_kind.to_string().to_uppercase()
+                );
+                save_file(&filename, &chart.to_bytes()?);
             }
         }
 
