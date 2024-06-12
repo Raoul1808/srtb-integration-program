@@ -1,10 +1,20 @@
+#![cfg_attr(target_arch = "wasm32", allow(unused_imports))]
+
 use std::{fs, io::Write};
 
+#[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
+
 use srtb_integration::{
     ChromaIntegrator, Integrator, RawSrtbFile, SpeedsIntegrator, SpinDifficulty,
 };
 
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    unimplemented!("no cli for wasm");
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn main() {
     println!("Please select the integration mode");
     println!("1. Speed Triggers (Dynamic Track Speed)");
