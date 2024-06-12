@@ -9,7 +9,10 @@ use srtb_integration::{
 };
 use strum::Display;
 
-use super::file::save_file;
+use super::{
+    file::{open_file, save_file},
+    ReadFile,
+};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -59,12 +62,6 @@ enum Message {
     None,
 }
 
-#[derive(Debug)]
-struct ReadFile {
-    name: String,
-    content: String,
-}
-
 struct App {
     integrator_state: combo_box::State<IntegratorKind>,
     difficulty_state: combo_box::State<SpinDifficulty>,
@@ -84,41 +81,16 @@ struct ProcessData {
 }
 
 impl App {
-    async fn request_file<S: Into<String>, T: ToString>(
-        filter_name: S,
-        filter_ext: &[T],
-    ) -> Option<Arc<ReadFile>> {
-        let file = rfd::AsyncFileDialog::new()
-            .add_filter(filter_name, filter_ext)
-            .pick_file()
-            .await?;
-        let content = match String::from_utf8(file.read().await) {
-            Ok(c) => c,
-            Err(e) => {
-                rfd::AsyncMessageDialog::new()
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_description(format!(
-                        "file provided does not contain valid utf-8 characters. Detailed error: {}",
-                        e
-                    ))
-                    .show()
-                    .await;
-                return None;
-            }
-        };
-        let file = ReadFile {
-            name: file.file_name(),
-            content,
-        };
-        Some(Arc::new(file))
+    async fn request_file(filter_ext: &str) -> Option<Arc<ReadFile>> {
+        open_file(filter_ext).await.map(Arc::new)
     }
 
     async fn request_chart_file() -> Option<Arc<ReadFile>> {
-        Self::request_file("Spin Rhythm Track Bundle", &["srtb"]).await
+        Self::request_file("srtb").await
     }
 
     async fn request_extra_file(integrator: IntegratorKind) -> Option<Arc<ReadFile>> {
-        Self::request_file(integrator.to_string(), &[integrator.ext()]).await
+        Self::request_file(integrator.ext()).await
     }
 
     async fn process(data: ProcessData) {

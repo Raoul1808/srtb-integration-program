@@ -2684,9 +2684,11 @@ dependencies = [
  "console_error_panic_hook",
  "console_log",
  "iced",
+ "log",
  "rfd",
  "srtb-integration",
  "strum",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
