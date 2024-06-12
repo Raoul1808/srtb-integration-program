@@ -36,6 +36,10 @@ impl RgbColor {
         let b = (hex & 0xFF) as u8;
         Self { r, g, b }
     }
+
+    pub fn hex(self) -> String {
+        format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
+    }
 }
 
 impl From<HslColor> for RgbColor {
@@ -201,5 +205,16 @@ mod test {
         assert_eq!(col, expected_col);
 
         Ok(())
+    }
+
+    #[test]
+    fn rgb_to_hex() {
+        let col = RgbColor {
+            r: 31,
+            g: 30,
+            b: 51,
+        };
+        let expected_hex = "#1f1e33";
+        assert_eq!(col.hex(), expected_hex);
     }
 }

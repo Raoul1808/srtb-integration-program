@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::{Display, Formatter},
+    fmt::{Display, Formatter, Write},
 };
 
 use serde::{Deserialize, Serialize};
@@ -48,6 +48,19 @@ impl ChromaNoteType {
         };
         Ok(note)
     }
+
+    pub fn to_str_chroma(self) -> &'static str {
+        use ChromaNoteType::*;
+        match self {
+            NoteA => "NoteA",
+            NoteB => "NoteB",
+            Beat => "Beat",
+            SpinLeft => "SpinLeft",
+            SpinRight => "SpinRight",
+            Scratch => "Scratch",
+            Ancillary => "Ancillary",
+        }
+    }
 }
 
 impl Display for ChromaNoteType {
@@ -92,7 +105,7 @@ impl ChromaTrigger {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 struct ChromaTriggersData {
     note_a: Vec<ChromaTrigger>,
@@ -396,8 +409,47 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
     }
 }
 
-fn chroma_to_text(_data: &ChromaTriggersData) -> String {
-    "no extraction for now :(".into()
+fn chroma_to_text(data: &ChromaTriggersData) -> String {
+    let mut notes = vec![];
+    notes.extend(data.note_a.iter().map(|n| (ChromaNoteType::NoteA, n)));
+    notes.extend(data.note_b.iter().map(|n| (ChromaNoteType::NoteB, n)));
+    notes.extend(data.beat.iter().map(|n| (ChromaNoteType::Beat, n)));
+    notes.extend(data.spin_left.iter().map(|n| (ChromaNoteType::SpinLeft, n)));
+    notes.extend(
+        data.spin_right
+            .iter()
+            .map(|n| (ChromaNoteType::SpinRight, n)),
+    );
+    notes.extend(data.scratch.iter().map(|n| (ChromaNoteType::Scratch, n)));
+    notes.extend(
+        data.ancillary
+            .iter()
+            .map(|n| (ChromaNoteType::Ancillary, n)),
+    );
+    notes.sort_by(|(_, t1), (_, t2)| t1.time.total_cmp(&t2.time));
+    notes
+        .iter()
+        .fold(String::new(), |mut output, (note, trigger)| {
+            let note = note.to_str_chroma();
+            let src_col = RgbColor::from(trigger.start_color).hex();
+            let dst_col = RgbColor::from(trigger.end_color).hex();
+            let str = if trigger.time == 0. && trigger.duration == 0. {
+                format!("Start {} {}", note, src_col)
+            } else if trigger.duration == 0. {
+                format!("Instant {} {:?} {}", note, trigger.time, dst_col)
+            } else {
+                format!(
+                    "{} {:?} {:?} {} {}",
+                    note,
+                    trigger.time,
+                    trigger.time + trigger.duration,
+                    src_col,
+                    dst_col
+                )
+            };
+            let _ = writeln!(output, "{}", str);
+            output
+        })
 }
 
 pub struct ChromaIntegrator;
@@ -449,7 +501,7 @@ impl Integrator for ChromaIntegrator {
 #[cfg(test)]
 mod test {
     use crate::{
-        chroma::{text_to_chroma, ChromaTrigger},
+        chroma::{chroma_to_text, text_to_chroma, ChromaTrigger, ChromaTriggersData},
         color::HslColor,
     };
 
@@ -585,5 +637,145 @@ mod test {
         let chroma = text_to_chroma(chroma).unwrap();
         assert_eq!(chroma.note_a, expected_note_a);
         assert_eq!(chroma.note_b, expected_note_b);
+    }
+
+    #[test]
+    fn to_text() {
+        let note_a = vec![
+            ChromaTrigger {
+                time: 0.,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 0.5,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 3.,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 4.,
+                duration: 1.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 0.,
+                    l: 1.,
+                },
+                end_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+        ];
+
+        let note_b = vec![
+            ChromaTrigger {
+                time: 0.,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 1.,
+                duration: 1.,
+                start_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 3.,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.5,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 4.,
+                duration: 1.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 0.,
+                    l: 1.,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+        ];
+
+        let data = ChromaTriggersData {
+            note_a,
+            note_b,
+            ..Default::default()
+        };
+
+        let expected_chroma = r#"Start NoteA #ff0000
+Start NoteB #00ffff
+Instant NoteA 0.5 #00ffff
+NoteB 1.0 2.0 #00ffff #ff0000
+Instant NoteA 3.0 #ff0000
+Instant NoteB 3.0 #00ffff
+NoteA 4.0 5.0 #ffffff #00ffff
+NoteB 4.0 5.0 #ffffff #ff0000
+"#;
+
+        let chroma = chroma_to_text(&data);
+        assert_eq!(chroma, expected_chroma);
     }
 }
