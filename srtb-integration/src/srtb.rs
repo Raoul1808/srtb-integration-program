@@ -42,6 +42,14 @@ impl RawSrtbFile {
         fs::write(path, chart_string).map_err(IntegrationError::IoError)
     }
 
+    pub fn from_bytes(data: &[u8]) -> Result<Self, IntegrationError> {
+        serde_json::from_slice(data).map_err(IntegrationError::SerdeJsonError)
+    }
+
+    pub fn to_bytes(&self) -> Result<Vec<u8>, IntegrationError> {
+        serde_json::to_vec(self).map_err(IntegrationError::SerdeJsonError)
+    }
+
     pub fn get_large_string_value(&self, key_string: &str) -> Option<String> {
         self.large_string_values_container
             .values
