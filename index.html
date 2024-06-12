@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en" style="height: 100%">
+<head>
+    <meta charset="utf-8" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SRTB Integration Program - WebAssembly Version</title>
+    <base href="/" />
+
+<link rel="modulepreload" href="/srtb-integration-gui-307adb1e3b541b0e.js" crossorigin=anonymous integrity="sha384-7OEBAbSn6MWaLD8bmtxGUENF17Hvq6Z6B1XU6ymLgsog2fgObDwvwN6W95WX3X+K">
+<link rel="preload" href="/srtb-integration-gui-307adb1e3b541b0e_bg.wasm" crossorigin=anonymous integrity="sha384-NpgQjpYHMepXrO+FTgrLW2ws8N53bsMiwAWPyhzXSdqJGmcrzWNPxAShbA4La2Tt" as="fetch" type="application/wasm"></head>
+<body style="height: 100%; margin: 0">
+
+<script type="module" nonce="djW0/nF1Kdk7b3i7IqW8lw==">
+import init, * as bindings from '/srtb-integration-gui-307adb1e3b541b0e.js';
+const wasm = await init('/srtb-integration-gui-307adb1e3b541b0e_bg.wasm');
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
+
+</script>
+</body>
+</html>
