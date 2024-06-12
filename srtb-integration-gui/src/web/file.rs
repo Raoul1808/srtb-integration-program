@@ -6,6 +6,11 @@ use web_sys::{
 
 use super::ReadFile;
 
+pub fn alert(msg: &str) {
+    let window = web_sys::window().unwrap();
+    window.alert_with_message(msg).expect("alert() failed");
+}
+
 pub async fn open_file(ext: &str) -> Option<ReadFile> {
     let ext = if !ext.starts_with(".") {
         format!(".{}", ext)

@@ -10,7 +10,7 @@ use srtb_integration::{
 use strum::Display;
 
 use super::{
-    file::{open_file, save_file},
+    file::{alert, open_file, save_file},
     ReadFile,
 };
 
@@ -95,20 +95,8 @@ impl App {
 
     async fn process(data: ProcessData) {
         match Self::try_process(data).await {
-            Ok(_) => {
-                rfd::AsyncMessageDialog::new()
-                    .set_level(rfd::MessageLevel::Info)
-                    .set_description("operation complete")
-                    .show()
-                    .await
-            }
-            Err(e) => {
-                rfd::AsyncMessageDialog::new()
-                    .set_level(rfd::MessageLevel::Error)
-                    .set_description(format!("an error occurred: {}", e))
-                    .show()
-                    .await
-            }
+            Ok(_) => alert("operation complete"),
+            Err(e) => alert(&format!("an error occurred: {}", e)),
         };
     }
 

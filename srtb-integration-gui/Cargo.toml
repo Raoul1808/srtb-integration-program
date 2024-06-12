@@ -9,13 +9,12 @@ repository.workspace = true
 
 [dependencies]
 iced = "0.12.1"
-rfd.workspace = true
 srtb-integration.workspace = true
 strum.workspace = true
 log = "0.4.21"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-# rfd.workspace = true
+rfd.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"
