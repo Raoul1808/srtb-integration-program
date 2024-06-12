@@ -40,10 +40,7 @@ pub async fn open_file(ext: &str) -> Option<ReadFile> {
     });
     input.click();
     let future = wasm_bindgen_futures::JsFuture::from(promise);
-    match future.await {
-        Ok(_) => (),
-        Err(_) => return None,
-    };
+    future.await.ok()?;
     let file = input.files().expect("input.files failed");
     let file = file.item(0)?;
     let file_reader = FileReader::new().expect("new FileReader() failed");
