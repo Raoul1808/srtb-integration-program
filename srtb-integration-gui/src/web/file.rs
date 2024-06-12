@@ -12,7 +12,7 @@ pub fn alert(msg: &str) {
 }
 
 pub async fn open_file(ext: &str) -> Option<ReadFile> {
-    let ext = if !ext.starts_with(".") {
+    let ext = if !ext.starts_with('.') {
         format!(".{}", ext)
     } else {
         ext.into()
