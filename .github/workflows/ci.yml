@@ -32,9 +32,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions-rs/toolchain@v1
+    - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: stable
-        target: wasm32-unknown-unknown
+        targets: wasm32-unknown-unknown
     - uses: actions/checkout@v4
     - run: cargo clippy --target wasm32-unknown-unknown --all -- -D warnings
