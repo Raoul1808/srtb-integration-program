@@ -3,6 +3,7 @@ use std::{
     fmt::{Display, Formatter, Write},
 };
 
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
 
 const SRTB_KEY: &str = "SpeenChroma_ChromaTriggers";
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum ChromaNoteType {
     NoteA,
     NoteB,
@@ -125,32 +126,59 @@ fn make_key(diff: SpinDifficulty) -> String {
     }
 }
 
-fn get_color(
-    color_map: &HashMap<ChromaNoteType, HslColor>,
-    note_type: ChromaNoteType,
-    color_str: &str,
-) -> Result<HslColor, ParsingError> {
-    let color_str = color_str.to_lowercase();
-    if color_str == "default" {
-        return color_map
-            .get(&note_type)
+#[derive(Debug, Default)]
+struct ChromaColorMaps {
+    default_colors: HashMap<ChromaNoteType, HslColor>,
+    variables: HashMap<String, HslColor>,
+}
+
+impl ChromaColorMaps {
+    fn get_color(&self, color_str: &str) -> Result<HslColor, ParsingError> {
+        let color_str = color_str.to_lowercase();
+        if color_str.starts_with('#') {
+            let col = RgbColor::from_hex_str(&color_str).map_err(ParsingError::ColorError)?;
+            let col = HslColor::from(col);
+            return Ok(col);
+        }
+        self.variables
+            .get(&color_str)
             .copied()
-            .ok_or(ParsingError::NoDefaultColorForNote(note_type.to_string()));
+            .ok_or(ParsingError::ColorVariableNotFound(color_str))
     }
-    if let Some(note_type) = color_str.strip_prefix("default") {
-        let note_type = ChromaNoteType::from_str(note_type)?;
-        return color_map
-            .get(&note_type)
-            .copied()
-            .ok_or(ParsingError::NoDefaultColorForNote(note_type.to_string()));
+
+    fn get_color_default_note(&self, color_str: &str) -> Result<HslColor, ParsingError> {
+        let color_str = color_str.to_lowercase();
+        if let Some(note_type) = color_str.strip_prefix("default") {
+            let note_type = ChromaNoteType::from_str(note_type)?;
+            return self
+                .default_colors
+                .get(&note_type)
+                .copied()
+                .ok_or(ParsingError::NoDefaultColorForNote(note_type.to_string()));
+        }
+        self.get_color(&color_str)
     }
-    let col = RgbColor::from_hex_str(&color_str).map_err(ParsingError::ColorError)?;
-    let col = HslColor::from(col);
-    Ok(col)
+
+    fn get_color_default(
+        &self,
+        note_type: ChromaNoteType,
+        color_str: &str,
+    ) -> Result<HslColor, ParsingError> {
+        let color_str = color_str.to_lowercase();
+        if color_str == "default" {
+            return self
+                .default_colors
+                .get(&note_type)
+                .copied()
+                .ok_or(ParsingError::NoDefaultColorForNote(note_type.to_string()));
+        }
+        self.get_color_default_note(&color_str)
+    }
 }
 
 fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError> {
-    let mut default_colors = HashMap::new();
+    let regex = Regex::new(r"(default)|([^a-zA-Z0-9\-_]+)").unwrap();
+    let mut colors = ChromaColorMaps::default();
     let mut chroma_data = HashMap::new();
     for note_type in ChromaNoteType::ALL_NOTES {
         chroma_data.insert(note_type, vec![]);
@@ -177,9 +205,9 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                 }
                 let note_type = ChromaNoteType::from_str(line[1])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                let color = HslColor::from(RgbColor::from_hex_str(line[2]).map_err(|e| {
-                    IntegrationError::ParsingError(line_number, ParsingError::ColorError(e))
-                })?);
+                let color = colors
+                    .get_color(line[2])
+                    .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                 chroma_data
                     .get_mut(&note_type)
                     .unwrap()
@@ -189,7 +217,26 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                         start_color: color,
                         end_color: color,
                     });
-                default_colors.insert(note_type, color);
+                colors.default_colors.insert(note_type, color);
+            }
+            "set" => {
+                if line.len() < 3 {
+                    return Err(IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::MissingArguments,
+                    ));
+                }
+                let variable_name = line[1].to_string();
+                let color = HslColor::from(RgbColor::from_hex_str(line[2]).map_err(|e| {
+                    IntegrationError::ParsingError(line_number, ParsingError::ColorError(e))
+                })?);
+                if regex.is_match(&variable_name) {
+                    return Err(IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::InvalidColorVariableName(variable_name),
+                    ));
+                }
+                colors.variables.insert(variable_name.to_string(), color);
             }
             "instant" => {
                 if line.len() < 4 {
@@ -206,7 +253,8 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                         ParsingError::InvalidFloat(line[2].into()),
                     )
                 })?;
-                let color = get_color(&default_colors, note_type, line[3])
+                let color = colors
+                    .get_color_default(note_type, line[3])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                 chroma_data
                     .get_mut(&note_type)
@@ -304,10 +352,9 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                             .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                         let second_note_type = ChromaNoteType::from_str(line[5])
                             .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                        let flash_col = RgbColor::from_hex_str(line[6]).map_err(|e| {
-                            IntegrationError::ParsingError(line_number, ParsingError::ColorError(e))
-                        })?;
-                        let flash_col = HslColor::from(flash_col);
+                        let flash_col = colors
+                            .get_color(line[6])
+                            .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                         let (first_col, second_col) = {
                             let first_last_trigger = chroma_data
                                 .get(&first_note_type)
@@ -375,9 +422,11 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                         ParsingError::InvalidFloat(line[2].into()),
                     )
                 })?;
-                let start_color = get_color(&default_colors, note_type, line[3])
+                let start_color = colors
+                    .get_color_default(note_type, line[3])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                let end_color = get_color(&default_colors, note_type, line[4])
+                let end_color = colors
+                    .get_color_default(note_type, line[4])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                 let mut trigger = ChromaTrigger {
                     time: start_time,
@@ -508,12 +557,15 @@ mod test {
     #[test]
     fn to_chroma() {
         let chroma = r#"
-        Start NoteA #ff0000
-        Start NoteB #00ffff
-        Instant NoteA 0.5 #00ffff
-        NoteB 1.0 2.0 #00ffff #ff0000
+        Set red #ff0000
+        Set cyan #00ffff
+        Set white #ffffff
+        Start NoteA red
+        Start NoteB cyan
+        Instant NoteA 0.5 cyan
+        NoteB 1.0 2.0 cyan red
         Swap Instant 3.0 NoteA NoteB
-        Swap Flash 4.0 5.0 NoteA NoteB #ffffff
+        Swap Flash 4.0 5.0 NoteA NoteB white
         "#;
 
         let expected_note_a = vec![

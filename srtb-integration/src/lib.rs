@@ -77,6 +77,12 @@ pub enum ParsingError {
     #[error("not enough arguments")]
     MissingArguments,
 
+    #[error("color variable \"{0}\" does not exist")]
+    ColorVariableNotFound(String),
+
+    #[error("invalid color variable name: {0}")]
+    InvalidColorVariableName(String),
+
     #[error("color error: {0}")]
     ColorError(ColorError),
 
