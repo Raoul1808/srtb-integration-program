@@ -2699,7 +2699,7 @@ dependencies = [
 
 [[package]]
 name = "srtb-integration"
-version = "2.0.1"
+version = "2.1.0"
 dependencies = [
  "regex",
  "serde",
@@ -2710,7 +2710,7 @@ dependencies = [
 
 [[package]]
 name = "srtb-integration-cli"
-version = "2.0.1"
+version = "2.1.0"
 dependencies = [
  "rfd",
  "srtb-integration",
@@ -2718,7 +2718,7 @@ dependencies = [
 
 [[package]]
 name = "srtb-integration-gui"
-version = "2.0.1"
+version = "2.1.0"
 dependencies = [
  "console_error_panic_hook",
  "console_log",
