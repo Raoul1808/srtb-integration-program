@@ -92,8 +92,20 @@ pub enum ParsingError {
     #[error("invalid boolean: {0}")]
     InvalidBool(String),
 
+    #[error("invalid integer: {0}")]
+    InvalidInt(String),
+
     #[error("invalid note type: {0}")]
     InvalidNote(String),
+
+    #[error("nested repeat blocks are unsupported")]
+    NoNestedRepeats,
+
+    #[error("unexpected EndRepeat instruction")]
+    UnexpectedEndRepeat,
+
+    #[error("invalid command. Correct syntax is: Repeat X internal Y")]
+    InvalidRepeatCommand,
 
     #[error("no default color for note type {0}")]
     NoDefaultColorForNote(String),

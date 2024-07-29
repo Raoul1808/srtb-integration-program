@@ -22,12 +22,89 @@ struct SpeedTriggersData {
 
 fn text_to_speeds(data: &str) -> Result<SpeedTriggersData, IntegrationError> {
     let mut triggers = vec![];
-    for (line_number, line) in data.lines().enumerate() {
+    let mut line_number = 0;
+
+    let mut repeating = false;
+    let mut repeat_count = 0;
+    let mut current_iteration = 0;
+    let mut repeat_interval = 0.;
+    let mut goto_line = 0;
+
+    let lines: Vec<_> = data.lines().collect();
+    while line_number < lines.len() {
+        println!("Working on line {}", line_number);
+        let line = lines[line_number];
+        let line = line.to_lowercase();
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
+            line_number += 1;
             continue;
         }
         let line: Vec<_> = line.split_whitespace().collect();
+
+        if line[0] == "repeat" {
+            if line.len() < 4 {
+                return Err(IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::MissingArguments,
+                ));
+            }
+
+            if line[2] != "interval" {
+                return Err(IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::InvalidRepeatCommand,
+                ));
+            }
+
+            if repeating {
+                return Err(IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::NoNestedRepeats,
+                ));
+            }
+
+            repeating = true;
+            repeat_count = line[1].parse().map_err(|_| {
+                IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::InvalidInt(line[1].into()),
+                )
+            })?;
+            repeat_interval = line[3].parse().map_err(|_| {
+                IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::InvalidFloat(line[3].into()),
+                )
+            })?;
+            current_iteration = 0;
+            goto_line = line_number;
+            line_number += 1;
+            continue;
+        }
+
+        if line[0] == "endrepeat" {
+            if !repeating {
+                return Err(IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::UnexpectedEndRepeat,
+                ));
+            }
+
+            current_iteration += 1;
+            if current_iteration < repeat_count {
+                line_number = goto_line + 1;
+                continue;
+            }
+
+            repeating = false;
+            repeat_count = 0;
+            repeat_interval = 0.;
+            goto_line = 0;
+            line_number += 1;
+            continue;
+        }
+
         if line.len() < 2 {
             return Err(IntegrationError::ParsingError(
                 line_number,
@@ -52,10 +129,15 @@ fn text_to_speeds(data: &str) -> Result<SpeedTriggersData, IntegrationError> {
             false
         };
         triggers.push(SpeedTrigger {
-            time,
+            time: if repeating {
+                time + repeat_interval * current_iteration as f32
+            } else {
+                time
+            },
             speed_multiplier,
             interpolate,
         });
+        line_number += 1;
     }
 
     triggers.sort_by(|t1, t2| t1.time.total_cmp(&t2.time));
@@ -186,5 +268,51 @@ mod test {
 
         let speeds = speeds_to_text(&speeds);
         assert_eq!(speeds, expected_speeds);
+    }
+
+    #[test]
+    fn to_speeds_repeat() {
+        let speeds = r#"
+        Repeat 3 interval 1.0
+        0.0 0.0 true
+        0.75 1.0 false
+        EndRepeat
+        "#;
+
+        let expected_speeds = vec![
+            SpeedTrigger {
+                time: 0.,
+                speed_multiplier: 0.,
+                interpolate: true,
+            },
+            SpeedTrigger {
+                time: 0.75,
+                speed_multiplier: 1.,
+                interpolate: false,
+            },
+            SpeedTrigger {
+                time: 1.,
+                speed_multiplier: 0.,
+                interpolate: true,
+            },
+            SpeedTrigger {
+                time: 1.75,
+                speed_multiplier: 1.,
+                interpolate: false,
+            },
+            SpeedTrigger {
+                time: 2.,
+                speed_multiplier: 0.,
+                interpolate: true,
+            },
+            SpeedTrigger {
+                time: 2.75,
+                speed_multiplier: 1.,
+                interpolate: false,
+            },
+        ];
+
+        let speeds = text_to_speeds(speeds).unwrap();
+        assert_eq!(speeds.triggers, expected_speeds);
     }
 }
