@@ -184,14 +184,42 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
         chroma_data.insert(note_type, vec![]);
     }
 
-    for line in content.lines().enumerate() {
-        let (line_number, line) = line;
+    let lines: Vec<_> = content.lines().collect();
+    let mut line_number = 0;
+
+    let mut repeating = false;
+    let mut repeat_count = 0;
+    let mut current_iteration = 0;
+    let mut repeat_interval = 0.;
+    let mut goto_line = 0;
+
+    macro_rules! get_time {
+        ($time:expr) => {{
+            let time: f32 = $time.parse().map_err(|_| {
+                IntegrationError::ParsingError(
+                    line_number,
+                    ParsingError::InvalidFloat($time.into()),
+                )
+            })?;
+            let time = if repeating {
+                time + repeat_interval * current_iteration as f32
+            } else {
+                time
+            };
+            Ok::<f32, IntegrationError>(time)
+        }};
+    }
+
+    while line_number < lines.len() {
+        let line = lines[line_number];
         let line = line.trim().to_lowercase();
         if line.is_empty() || line.starts_with('#') {
+            line_number += 1;
             continue;
         }
         let line: Vec<_> = line.split_whitespace().collect();
         if line.is_empty() || line[0].is_empty() {
+            line_number += 1;
             continue;
         }
         let verb = line[0];
@@ -247,12 +275,7 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                 }
                 let note_type = ChromaNoteType::from_str(line[1])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                let time: f32 = line[2].parse().map_err(|_| {
-                    IntegrationError::ParsingError(
-                        line_number,
-                        ParsingError::InvalidFloat(line[2].into()),
-                    )
-                })?;
+                let time = get_time!(line[2])?;
                 let color = colors
                     .get_color_default(note_type, line[3])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
@@ -281,12 +304,7 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                                 ParsingError::MissingArguments,
                             ));
                         }
-                        let time: f32 = line[2].parse().map_err(|_| {
-                            IntegrationError::ParsingError(
-                                line_number,
-                                ParsingError::InvalidFloat(line[2].into()),
-                            )
-                        })?;
+                        let time = get_time!(line[2])?;
                         let first_note_type = ChromaNoteType::from_str(line[3])
                             .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                         let second_note_type = ChromaNoteType::from_str(line[4])
@@ -336,18 +354,8 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                                 ParsingError::MissingArguments,
                             ));
                         }
-                        let start_time: f32 = line[2].parse().map_err(|_| {
-                            IntegrationError::ParsingError(
-                                line_number,
-                                ParsingError::InvalidFloat(line[2].into()),
-                            )
-                        })?;
-                        let end_time: f32 = line[3].parse().map_err(|_| {
-                            IntegrationError::ParsingError(
-                                line_number,
-                                ParsingError::InvalidFloat(line[3].into()),
-                            )
-                        })?;
+                        let start_time = get_time!(line[2])?;
+                        let end_time = get_time!(line[3])?;
                         let first_note_type = ChromaNoteType::from_str(line[4])
                             .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
                         let second_note_type = ChromaNoteType::from_str(line[5])
@@ -401,6 +409,63 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                     }
                 }
             }
+            "repeat" => {
+                if line.len() < 4 {
+                    return Err(IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::MissingArguments,
+                    ));
+                }
+
+                if line[2] != "interval" {
+                    return Err(IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::InvalidRepeatCommand,
+                    ));
+                }
+
+                if repeating {
+                    return Err(IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::NoNestedRepeats,
+                    ));
+                }
+
+                repeating = true;
+                repeat_count = line[1].parse().map_err(|_| {
+                    IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::InvalidInt(line[1].into()),
+                    )
+                })?;
+                repeat_interval = line[3].parse().map_err(|_| {
+                    IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::InvalidFloat(line[3].into()),
+                    )
+                })?;
+                current_iteration = 0;
+                goto_line = line_number;
+            }
+            "endrepeat" => {
+                if !repeating {
+                    return Err(IntegrationError::ParsingError(
+                        line_number,
+                        ParsingError::UnexpectedEndRepeat,
+                    ));
+                }
+
+                current_iteration += 1;
+                if current_iteration < repeat_count {
+                    line_number = goto_line + 1;
+                    continue;
+                }
+
+                repeating = false;
+                repeat_count = 0;
+                repeat_interval = 0.;
+                goto_line = 0;
+            }
             _ => {
                 if line.len() < 5 {
                     return Err(IntegrationError::ParsingError(
@@ -410,18 +475,8 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                 }
                 let note_type = ChromaNoteType::from_str(line[0])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                let start_time: f32 = line[1].parse().map_err(|_| {
-                    IntegrationError::ParsingError(
-                        line_number,
-                        ParsingError::InvalidFloat(line[1].into()),
-                    )
-                })?;
-                let end_time: f32 = line[2].parse().map_err(|_| {
-                    IntegrationError::ParsingError(
-                        line_number,
-                        ParsingError::InvalidFloat(line[2].into()),
-                    )
-                })?;
+                let start_time = get_time!(line[1])?;
+                let end_time = get_time!(line[2])?;
                 let start_color = colors
                     .get_color_default(note_type, line[3])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
@@ -438,6 +493,7 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                 chroma_data.get_mut(&note_type).unwrap().push(trigger);
             }
         }
+        line_number += 1;
     }
 
     for (_, trigger_data) in chroma_data.iter_mut() {
@@ -828,6 +884,68 @@ NoteB 4.0 5.0 #ffffff #ff0000
 "#;
 
         let chroma = chroma_to_text(&data);
+        assert_eq!(chroma, expected_chroma);
+    }
+
+    #[test]
+    fn to_chroma_repeat() {
+        let chroma = r#"
+        Repeat 3 interval 0.5
+        Instant NoteA 0.0 #ff0000
+        EndRepeat
+        "#;
+
+        let note_a = vec![
+            ChromaTrigger {
+                time: 0.,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 0.5,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+            ChromaTrigger {
+                time: 1.,
+                duration: 0.,
+                start_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+                end_color: HslColor {
+                    h: 0.,
+                    s: 1.,
+                    l: 0.5,
+                },
+            },
+        ];
+
+        let expected_chroma = ChromaTriggersData {
+            note_a,
+            ..Default::default()
+        };
+
+        let chroma = text_to_chroma(chroma).unwrap();
         assert_eq!(chroma, expected_chroma);
     }
 }
