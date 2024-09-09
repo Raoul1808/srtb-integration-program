@@ -98,9 +98,6 @@ pub enum ParsingError {
     #[error("invalid note type: {0}")]
     InvalidNote(String),
 
-    #[error("nested repeat blocks are unsupported")]
-    NoNestedRepeats,
-
     #[error("missing {0} EndRepeat instruction(s)")]
     MissingEndRepeat(usize),
 
