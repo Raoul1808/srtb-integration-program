@@ -187,22 +187,25 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
     let lines: Vec<_> = content.lines().collect();
     let mut line_number = 0;
 
-    let mut repeating = false;
-    let mut repeat_count = 0;
-    let mut current_iteration = 0;
-    let mut repeat_interval = 0.;
-    let mut goto_line = 0;
+    let mut repeat_depth = 0;
+    let mut repeat_counts = Vec::<i32>::new();
+    let mut current_iterations = vec![];
+    let mut repeat_intervals = Vec::<f32>::new();
+    let mut goto_line_buf = vec![];
 
     macro_rules! get_time {
         ($time:expr) => {{
-            let time: f32 = $time.parse().map_err(|_| {
+            let mut time: f32 = $time.parse().map_err(|_| {
                 IntegrationError::ParsingError(
                     line_number,
                     ParsingError::InvalidFloat($time.into()),
                 )
             })?;
-            let time = if repeating {
-                time + repeat_interval * current_iteration as f32
+            let time = if repeat_depth > 0 {
+                for i in 0..repeat_depth {
+                    time += repeat_intervals[i] * current_iterations[i] as f32;
+                }
+                time
             } else {
                 time
             };
@@ -424,47 +427,41 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                     ));
                 }
 
-                if repeating {
-                    return Err(IntegrationError::ParsingError(
-                        line_number,
-                        ParsingError::NoNestedRepeats,
-                    ));
-                }
-
-                repeating = true;
-                repeat_count = line[1].parse().map_err(|_| {
+                repeat_depth += 1;
+                repeat_counts.push(line[1].parse().map_err(|_| {
                     IntegrationError::ParsingError(
                         line_number,
                         ParsingError::InvalidInt(line[1].into()),
                     )
-                })?;
-                repeat_interval = line[3].parse().map_err(|_| {
+                })?);
+                repeat_intervals.push(line[3].parse().map_err(|_| {
                     IntegrationError::ParsingError(
                         line_number,
                         ParsingError::InvalidFloat(line[3].into()),
                     )
-                })?;
-                current_iteration = 0;
-                goto_line = line_number;
+                })?);
+                current_iterations.push(0);
+                goto_line_buf.push(line_number);
             }
             "endrepeat" => {
-                if !repeating {
+                if repeat_depth == 0 {
                     return Err(IntegrationError::ParsingError(
                         line_number,
                         ParsingError::UnexpectedEndRepeat,
                     ));
                 }
 
-                current_iteration += 1;
-                if current_iteration < repeat_count {
-                    line_number = goto_line + 1;
+                current_iterations[repeat_depth - 1] += 1;
+                if current_iterations[repeat_depth - 1] < repeat_counts[repeat_depth - 1] {
+                    line_number = goto_line_buf[repeat_depth - 1] + 1;
                     continue;
                 }
 
-                repeating = false;
-                repeat_count = 0;
-                repeat_interval = 0.;
-                goto_line = 0;
+                repeat_depth -= 1;
+                repeat_counts.pop();
+                repeat_intervals.pop();
+                goto_line_buf.pop();
+                current_iterations.pop();
             }
             _ => {
                 if line.len() < 5 {
@@ -494,6 +491,13 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
             }
         }
         line_number += 1;
+    }
+
+    if repeat_depth > 0 {
+        return Err(IntegrationError::ParsingError(
+            line_number,
+            ParsingError::MissingEndRepeat(repeat_depth),
+        ));
     }
 
     for (_, trigger_data) in chroma_data.iter_mut() {
@@ -607,7 +611,7 @@ impl Integrator for ChromaIntegrator {
 mod test {
     use crate::{
         chroma::{chroma_to_text, text_to_chroma, ChromaTrigger, ChromaTriggersData},
-        color::HslColor,
+        color::{HslColor, RgbColor},
     };
 
     #[test]
@@ -937,6 +941,66 @@ NoteB 4.0 5.0 #ffffff #ff0000
                     s: 1.,
                     l: 0.5,
                 },
+            },
+        ];
+
+        let expected_chroma = ChromaTriggersData {
+            note_a,
+            ..Default::default()
+        };
+
+        let chroma = text_to_chroma(chroma).unwrap();
+        assert_eq!(chroma, expected_chroma);
+    }
+
+    #[test]
+    fn nested_repeat() {
+        let chroma = r#"
+        Repeat 3 interval 2.0
+        Repeat 2 interval 0.5
+        NoteA 1.0 1.5 #ffffff #ff0000
+        EndRepeat
+        EndRepeat
+        "#;
+
+        let start_color = HslColor::from(RgbColor::from_hex(0xffffff));
+        let end_color = HslColor::from(RgbColor::from_hex(0xff0000));
+        let note_a = vec![
+            ChromaTrigger {
+                time: 1.,
+                duration: 0.5,
+                start_color,
+                end_color,
+            },
+            ChromaTrigger {
+                time: 1.5,
+                duration: 0.5,
+                start_color,
+                end_color,
+            },
+            ChromaTrigger {
+                time: 3.,
+                duration: 0.5,
+                start_color,
+                end_color,
+            },
+            ChromaTrigger {
+                time: 3.5,
+                duration: 0.5,
+                start_color,
+                end_color,
+            },
+            ChromaTrigger {
+                time: 5.,
+                duration: 0.5,
+                start_color,
+                end_color,
+            },
+            ChromaTrigger {
+                time: 5.5,
+                duration: 0.5,
+                start_color,
+                end_color,
             },
         ];
 

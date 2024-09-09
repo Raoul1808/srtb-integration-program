@@ -101,6 +101,9 @@ pub enum ParsingError {
     #[error("nested repeat blocks are unsupported")]
     NoNestedRepeats,
 
+    #[error("missing {0} EndRepeat instruction(s)")]
+    MissingEndRepeat(usize),
+
     #[error("unexpected EndRepeat instruction")]
     UnexpectedEndRepeat,
 
