@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use iced::{
     widget::{button, column, combo_box, container, radio, row, text},
-    Alignment, Application, Command, Length, Settings, Theme,
+    Alignment, Length, Task,
 };
 use srtb_integration::{
     ChromaIntegrator, IntegrationError, Integrator, RawSrtbFile, SpeedsIntegrator, SpinDifficulty,
@@ -20,7 +20,7 @@ pub fn program() -> iced::Result {
     console_log::init().expect("failed to initialize logger");
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-    App::run(Settings::default())
+    iced::run(App::title, App::update, App::view)
 }
 
 #[derive(Debug, Display, Default, Clone, Copy, PartialEq, Eq)]
@@ -80,7 +80,196 @@ struct ProcessData {
     extra: Option<Arc<ReadFile>>,
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            integrator_state: combo_box::State::new(IntegratorKind::ALL.to_vec()),
+            difficulty_state: combo_box::State::new(SpinDifficulty::ALL.to_vec()),
+            integrator_kind: None,
+            difficulty: None,
+            operation: None,
+            chart: None,
+            extra_file: None,
+        }
+    }
+}
+
 impl App {
+    fn title(&self) -> String {
+        "SRTB Integration Program".into()
+    }
+
+    fn update(&mut self, message: Message) -> iced::Task<Message> {
+        match message {
+            Message::SelectIntegrator(integrator) => {
+                self.integrator_kind = Some(integrator);
+                Task::none()
+            }
+            Message::RequestSelectChart => Task::perform(Self::request_chart_file(), Message::SelectedChart),
+            Message::SelectedChart(file) => {
+                if file.is_some() {
+                    self.chart = file;
+                }
+                Task::none()
+            }
+            Message::SelectDifficulty(diff) => {
+                self.difficulty = Some(diff);
+                Task::none()
+            }
+            Message::SelectOperation(op) => {
+                self.operation = Some(op);
+                Task::none()
+            }
+            Message::RequestSelectExtraFile => Task::perform(
+                Self::request_extra_file(self.integrator_kind.unwrap_or_default()),
+                Message::SelectedExtraFile,
+            ),
+            Message::SelectedExtraFile(file) => {
+                if file.is_some() {
+                    self.extra_file = file;
+                }
+                Task::none()
+            }
+            Message::Process => {
+                if self.chart.is_none() {
+                    return Task::none();
+                }
+                let in_file = self.chart.clone().unwrap();
+                let extra = self.extra_file.clone();
+                let data = ProcessData {
+                    integrator: self.integrator_kind.unwrap_or_default(),
+                    diff: self.difficulty.unwrap_or_default(),
+                    op: self.operation.unwrap_or_default(),
+                    in_file,
+                    extra,
+                };
+                Task::perform(Self::process(data), |_| Message::None)
+            }
+            Message::None => Task::none(),
+        }
+    }
+
+    fn view(&self) -> iced::Element<Message> {
+        let integrator_label = text("Integrator Type");
+        let integrator_combo_box = combo_box(
+            &self.integrator_state,
+            "Integrator",
+            self.integrator_kind.as_ref(),
+            Message::SelectIntegrator,
+        );
+        let integrator_type_row = row![integrator_label, integrator_combo_box]
+            .spacing(10)
+            .align_y(Alignment::Center);
+
+        let input_chart_label = text("Input Chart");
+        let input_chart_button = button("Select").on_press(Message::RequestSelectChart);
+        let input_chart_row = row![input_chart_label, input_chart_button]
+            .spacing(10)
+            .align_y(Alignment::Center);
+        let selected_chart_label = text(format!(
+            "Selected: {}",
+            self.chart
+                .as_ref()
+                .map(|f| f.name.as_str())
+                .unwrap_or("None")
+        ));
+        let full_input_chart_col = column![input_chart_row, selected_chart_label]
+            .spacing(2)
+            .align_x(Alignment::Center);
+
+        let diff_label = text("Target Difficulty");
+        let diff_combo_box = combo_box(
+            &self.difficulty_state,
+            "Difficulty...",
+            self.difficulty.as_ref(),
+            Message::SelectDifficulty,
+        );
+        let diff_row = row![diff_label, diff_combo_box]
+            .spacing(10)
+            .align_y(Alignment::Center);
+
+        let radio_integrate = radio(
+            "Integrate",
+            OperationKind::Integrate,
+            self.operation,
+            Message::SelectOperation,
+        );
+        let radio_extract = radio(
+            "Extract",
+            OperationKind::Extract,
+            self.operation,
+            Message::SelectOperation,
+        );
+        let radio_remove = radio(
+            "Remove",
+            OperationKind::Remove,
+            self.operation,
+            Message::SelectOperation,
+        );
+        let radio_operation_col = column![radio_integrate, radio_extract, radio_remove]
+            .spacing(10)
+            .align_x(Alignment::Start);
+
+        let is_integrating = self
+            .operation
+            .is_some_and(|o| o == OperationKind::Integrate);
+        let extra_data_label = text("Extra File");
+        let extra_data_button = button("Select")
+            .on_press_maybe(is_integrating.then_some(Message::RequestSelectExtraFile));
+        let extra_data_row = row![extra_data_label, extra_data_button]
+            .spacing(10)
+            .align_y(Alignment::Center);
+        let selected_extra_label = text(format!(
+            "Selected: {}",
+            self.extra_file
+                .as_ref()
+                .map(|f| f.name.as_str())
+                .unwrap_or("None")
+        ));
+        let full_extra_data_col = column![extra_data_row, selected_extra_label]
+            .spacing(2)
+            .align_x(Alignment::Center);
+
+        let can_process = self.integrator_kind.is_some()
+            && self.chart.is_some()
+            && self.difficulty.is_some()
+            && self.operation.is_some()
+            && if let Some(OperationKind::Integrate) = self.operation {
+                self.extra_file.is_some()
+            } else {
+                true
+            };
+
+        let process_button = button(text("PROCESS").size(24.))
+            .padding(10)
+            .on_press_maybe(can_process.then_some(Message::Process));
+
+        let settings_col = column![
+            integrator_type_row,
+            full_input_chart_col,
+            diff_row,
+            radio_operation_col,
+            full_extra_data_col,
+        ]
+        .spacing(20)
+        .align_x(Alignment::Center);
+
+        let content_col = column![settings_col, process_button]
+            .spacing(40)
+            .align_x(Alignment::Center);
+
+        let version = text(format!("v{}", VERSION)).size(10);
+        let col = column![content_col, version].spacing(10.);
+
+        container(col)
+            .padding(20.)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .into()
+    }
+
     async fn request_file(filter_ext: &str) -> Option<Arc<ReadFile>> {
         open_file(filter_ext).await.map(Arc::new)
     }
@@ -148,207 +337,5 @@ impl App {
         }
 
         Ok(())
-    }
-}
-
-impl Application for App {
-    type Executor = iced::executor::Default;
-
-    type Message = Message;
-
-    type Theme = Theme;
-
-    type Flags = ();
-
-    fn new(_flags: Self::Flags) -> (Self, iced::Command<Self::Message>) {
-        (
-            Self {
-                integrator_state: combo_box::State::new(IntegratorKind::ALL.to_vec()),
-                difficulty_state: combo_box::State::new(SpinDifficulty::ALL.to_vec()),
-                integrator_kind: None,
-                difficulty: None,
-                operation: None,
-                chart: None,
-                extra_file: None,
-            },
-            Command::none(),
-        )
-    }
-
-    fn title(&self) -> String {
-        "SRTB Integration Program".into()
-    }
-
-    fn update(&mut self, message: Self::Message) -> iced::Command<Self::Message> {
-        match message {
-            Message::SelectIntegrator(integrator) => {
-                self.integrator_kind = Some(integrator);
-                Command::none()
-            }
-            Message::RequestSelectChart => {
-                Command::perform(Self::request_chart_file(), Message::SelectedChart)
-            }
-            Message::SelectedChart(file) => {
-                if file.is_some() {
-                    self.chart = file;
-                }
-                Command::none()
-            }
-            Message::SelectDifficulty(diff) => {
-                self.difficulty = Some(diff);
-                Command::none()
-            }
-            Message::SelectOperation(op) => {
-                self.operation = Some(op);
-                Command::none()
-            }
-            Message::RequestSelectExtraFile => Command::perform(
-                Self::request_extra_file(self.integrator_kind.unwrap_or_default()),
-                Message::SelectedExtraFile,
-            ),
-            Message::SelectedExtraFile(file) => {
-                if file.is_some() {
-                    self.extra_file = file;
-                }
-                Command::none()
-            }
-            Message::Process => {
-                if self.chart.is_none() {
-                    return Command::none();
-                }
-                let in_file = self.chart.clone().unwrap();
-                let extra = self.extra_file.clone();
-                let data = ProcessData {
-                    integrator: self.integrator_kind.unwrap_or_default(),
-                    diff: self.difficulty.unwrap_or_default(),
-                    op: self.operation.unwrap_or_default(),
-                    in_file,
-                    extra,
-                };
-                Command::perform(Self::process(data), |_| Message::None)
-            }
-            Message::None => Command::none(),
-        }
-    }
-
-    fn view(&self) -> iced::Element<'_, Self::Message, Self::Theme, iced::Renderer> {
-        let integrator_label = text("Integrator Type");
-        let integrator_combo_box = combo_box(
-            &self.integrator_state,
-            "Integrator",
-            self.integrator_kind.as_ref(),
-            Message::SelectIntegrator,
-        );
-        let integrator_type_row = row![integrator_label, integrator_combo_box]
-            .spacing(10)
-            .align_items(Alignment::Center);
-
-        let input_chart_label = text("Input Chart");
-        let input_chart_button = button("Select").on_press(Message::RequestSelectChart);
-        let input_chart_row = row![input_chart_label, input_chart_button]
-            .spacing(10)
-            .align_items(Alignment::Center);
-        let selected_chart_label = text(format!(
-            "Selected: {}",
-            self.chart
-                .as_ref()
-                .map(|f| f.name.as_str())
-                .unwrap_or("None")
-        ));
-        let full_input_chart_col = column![input_chart_row, selected_chart_label]
-            .spacing(2)
-            .align_items(Alignment::Center);
-
-        let diff_label = text("Target Difficulty");
-        let diff_combo_box = combo_box(
-            &self.difficulty_state,
-            "Difficulty...",
-            self.difficulty.as_ref(),
-            Message::SelectDifficulty,
-        );
-        let diff_row = row![diff_label, diff_combo_box]
-            .spacing(10)
-            .align_items(Alignment::Center);
-
-        let radio_integrate = radio(
-            "Integrate",
-            OperationKind::Integrate,
-            self.operation,
-            Message::SelectOperation,
-        );
-        let radio_extract = radio(
-            "Extract",
-            OperationKind::Extract,
-            self.operation,
-            Message::SelectOperation,
-        );
-        let radio_remove = radio(
-            "Remove",
-            OperationKind::Remove,
-            self.operation,
-            Message::SelectOperation,
-        );
-        let radio_operation_col = column![radio_integrate, radio_extract, radio_remove]
-            .spacing(10)
-            .align_items(Alignment::Start);
-
-        let is_integrating = self
-            .operation
-            .is_some_and(|o| o == OperationKind::Integrate);
-        let extra_data_label = text("Extra File");
-        let extra_data_button = button("Select")
-            .on_press_maybe(is_integrating.then_some(Message::RequestSelectExtraFile));
-        let extra_data_row = row![extra_data_label, extra_data_button]
-            .spacing(10)
-            .align_items(Alignment::Center);
-        let selected_extra_label = text(format!(
-            "Selected: {}",
-            self.extra_file
-                .as_ref()
-                .map(|f| f.name.as_str())
-                .unwrap_or("None")
-        ));
-        let full_extra_data_col = column![extra_data_row, selected_extra_label]
-            .spacing(2)
-            .align_items(Alignment::Center);
-
-        let can_process = self.integrator_kind.is_some()
-            && self.chart.is_some()
-            && self.difficulty.is_some()
-            && self.operation.is_some()
-            && if let Some(OperationKind::Integrate) = self.operation {
-                self.extra_file.is_some()
-            } else {
-                true
-            };
-
-        let process_button = button(text("PROCESS").size(24.))
-            .padding(10)
-            .on_press_maybe(can_process.then_some(Message::Process));
-
-        let settings_col = column![
-            integrator_type_row,
-            full_input_chart_col,
-            diff_row,
-            radio_operation_col,
-            full_extra_data_col,
-        ]
-        .spacing(20)
-        .align_items(Alignment::Center);
-
-        let content_col = column![settings_col, process_button]
-            .spacing(40)
-            .align_items(Alignment::Center);
-
-        let version = text(format!("v{}", VERSION)).size(10);
-        let col = column![content_col, version].spacing(10.);
-
-        container(col)
-            .padding(20.)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x()
-            .center_y()
-            .into()
     }
 }

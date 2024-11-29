@@ -16,8 +16,8 @@ repository = "https://github.com/Raoul1808/srtb-integration-program"
 [workspace.dependencies]
 srtb-integration = { path = "srtb-integration" }
 
-rfd = "0.14.1"
-strum = { version = "0.26.2", features = ["derive"] }
+rfd = "0.15.1"
+strum = { version = "0.26.3", features = ["derive"] }
 
 [profile.release]
 opt-level = 3
