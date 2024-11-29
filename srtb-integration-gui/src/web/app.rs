@@ -105,7 +105,9 @@ impl App {
                 self.integrator_kind = Some(integrator);
                 Task::none()
             }
-            Message::RequestSelectChart => Task::perform(Self::request_chart_file(), Message::SelectedChart),
+            Message::RequestSelectChart => {
+                Task::perform(Self::request_chart_file(), Message::SelectedChart)
+            }
             Message::SelectedChart(file) => {
                 if file.is_some() {
                     self.chart = file;
