@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>SRTB Integration Program - WebAssembly Version</title>
     <base href="/srtb-integration-program/" />
-
-<link rel="modulepreload" href="/srtb-integration-program/srtb-integration-gui-dc3e996d4659e721.js" crossorigin=anonymous integrity="sha384-wzIXcj4C57TB21e2kc4Kf8sPauxIZB6opSVBqJV/LTY03j5y0O0xY7Kmvoc1djsy">
-<link rel="preload" href="/srtb-integration-program/srtb-integration-gui-dc3e996d4659e721_bg.wasm" crossorigin=anonymous integrity="sha384-6sf1nvfP/mE+HUuYhiQgdcv6kISGzDHzrOYu71oA4l8mGRVQwucuuuwfAuelmuXs" as="fetch" type="application/wasm"></head>
+<link rel="modulepreload" href="/srtb-integration-program/srtb-integration-gui-ceeadde99a77f546.js" crossorigin=anonymous integrity="sha384-EKbugSkW6ydIt5SbBMMNGsX2aSnhGUw112WMVF5u42p67gGO4M5oS7m8lgctGxvs"><link rel="preload" href="/srtb-integration-program/srtb-integration-gui-ceeadde99a77f546_bg.wasm" crossorigin=anonymous integrity="sha384-O3z3zi/xcRWFZd//xy9pPZ4E1/qiep8kLxpYJ6rV4SPKdTUrckzYT/8k7oiGMkkO" as="fetch" type="application/wasm"></head>
 <body style="height: 100%; margin: 0">
 
-<script type="module" nonce="OjFJTCQPDgnkRUvrYenRrw==">
-import init, * as bindings from '/srtb-integration-program/srtb-integration-gui-dc3e996d4659e721.js';
-const wasm = await init('/srtb-integration-program/srtb-integration-gui-dc3e996d4659e721_bg.wasm');
+<script type="module" nonce="gQ65Wjy4gO5vK90fg0gb1g==">
+import init, * as bindings from '/srtb-integration-program/srtb-integration-gui-ceeadde99a77f546.js';
+const wasm = await init({ module_or_path: '/srtb-integration-program/srtb-integration-gui-ceeadde99a77f546_bg.wasm' });
 
 
 window.wasmBindings = bindings;
