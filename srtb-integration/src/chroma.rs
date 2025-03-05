@@ -385,21 +385,24 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                                 ))?;
                             (first_last_trigger.end_color, second_last_trigger.end_color)
                         };
-                        let mut trigger = ChromaTrigger {
-                            time: start_time,
-                            duration: end_time - start_time,
-                            start_color: flash_col,
-                            end_color: second_col,
-                        };
-                        trigger.ensure_smooth_transition();
-                        chroma_data.get_mut(&first_note_type).unwrap().push(trigger);
-                        trigger.start_color = flash_col;
-                        trigger.end_color = first_col;
-                        trigger.ensure_smooth_transition();
+                        chroma_data
+                            .get_mut(&first_note_type)
+                            .unwrap()
+                            .push(ChromaTrigger {
+                                time: start_time,
+                                duration: end_time - start_time,
+                                start_color: flash_col,
+                                end_color: second_col,
+                            });
                         chroma_data
                             .get_mut(&second_note_type)
                             .unwrap()
-                            .push(trigger);
+                            .push(ChromaTrigger {
+                                time: start_time,
+                                duration: end_time - start_time,
+                                start_color: flash_col,
+                                end_color: first_col,
+                            });
                     }
                     _ => {
                         return Err(IntegrationError::ParsingError(
@@ -477,14 +480,15 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                 let end_color = colors
                     .get_color_default(note_type, line[4])
                     .map_err(|e| IntegrationError::ParsingError(line_number, e))?;
-                let mut trigger = ChromaTrigger {
-                    time: start_time,
-                    duration: end_time - start_time,
-                    start_color,
-                    end_color,
-                };
-                trigger.ensure_smooth_transition();
-                chroma_data.get_mut(&note_type).unwrap().push(trigger);
+                chroma_data
+                    .get_mut(&note_type)
+                    .unwrap()
+                    .push(ChromaTrigger {
+                        time: start_time,
+                        duration: end_time - start_time,
+                        start_color,
+                        end_color,
+                    });
             }
         }
         line_number += 1;
@@ -499,6 +503,9 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
 
     for (_, trigger_data) in chroma_data.iter_mut() {
         trigger_data.sort_by(|a, b| a.time.total_cmp(&b.time));
+        for trigger in trigger_data.iter_mut() {
+            trigger.ensure_smooth_transition();
+        }
     }
 
     {
