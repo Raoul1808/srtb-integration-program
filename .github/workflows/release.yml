@@ -37,12 +37,12 @@ jobs:
     - name: Build
       run: cargo build --release
     - name: Upload CLI artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: srtb-integration-windows-cli.exe
         path: target/release/srtb-integration-cli.exe
     - name: Upload GUI artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: srtb-integration-windows-gui.exe
         path: target/release/srtb-integration-gui.exe
