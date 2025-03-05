@@ -1026,7 +1026,7 @@ NoteB 4.0 5.0 #ffffff #ff0000
     }
 
     #[test]
-    fn swap_repeats() {
+    fn flash_smooth_transition() {
         let white_red = HslColor {
             h: 0.0,
             s: 0.0,
@@ -1115,5 +1115,97 @@ NoteB 4.0 5.0 #ffffff #ff0000
         println!("Expected: {:#?}", expected_chroma);
         println!("Got: {:#?}", chroma);
         assert_eq!(chroma, expected_chroma);
+    }
+
+    #[test]
+    fn swap_multiple() {
+        let red = HslColor {
+            h: 0.0,
+            s: 1.0,
+            l: 0.5,
+        };
+        let blue = HslColor {
+            h: 2.0 / 3.0,
+            s: 1.0,
+            l: 0.5,
+        };
+        let chroma = r#"
+        Start NoteA #ff0000
+        Start NoteB #0000ff
+        Repeat 4 interval 0.5
+        Swap Instant 1.0 NoteA NoteB
+        EndRepeat
+        "#;
+        let note_a = vec![
+            ChromaTrigger {
+                time: 0.0,
+                duration: 0.0,
+                start_color: red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 1.0,
+                duration: 0.0,
+                start_color: blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 1.5,
+                duration: 0.0,
+                start_color: red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 2.0,
+                duration: 0.0,
+                start_color: blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 2.5,
+                duration: 0.0,
+                start_color: red,
+                end_color: red,
+            },
+        ];
+        let note_b = vec![
+            ChromaTrigger {
+                time: 0.0,
+                duration: 0.0,
+                start_color: blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 1.0,
+                duration: 0.0,
+                start_color: red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 1.5,
+                duration: 0.0,
+                start_color: blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 2.0,
+                duration: 0.0,
+                start_color: red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 2.5,
+                duration: 0.0,
+                start_color: blue,
+                end_color: blue,
+            },
+        ];
+        let expected_chroma = ChromaTriggersData {
+            note_a,
+            note_b,
+            ..Default::default()
+        };
+        let chroma = text_to_chroma(chroma).unwrap();
+        assert_eq!(expected_chroma, chroma);
     }
 }
