@@ -385,24 +385,21 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
                                 ))?;
                             (first_last_trigger.end_color, second_last_trigger.end_color)
                         };
-                        chroma_data
-                            .get_mut(&first_note_type)
-                            .unwrap()
-                            .push(ChromaTrigger {
-                                time: start_time,
-                                duration: end_time - start_time,
-                                start_color: flash_col,
-                                end_color: second_col,
-                            });
+                        let mut trigger = ChromaTrigger {
+                            time: start_time,
+                            duration: end_time - start_time,
+                            start_color: flash_col,
+                            end_color: second_col,
+                        };
+                        trigger.ensure_smooth_transition();
+                        chroma_data.get_mut(&first_note_type).unwrap().push(trigger);
+                        trigger.start_color = flash_col;
+                        trigger.end_color = first_col;
+                        trigger.ensure_smooth_transition();
                         chroma_data
                             .get_mut(&second_note_type)
                             .unwrap()
-                            .push(ChromaTrigger {
-                                time: start_time,
-                                duration: end_time - start_time,
-                                start_color: flash_col,
-                                end_color: first_col,
-                            });
+                            .push(trigger);
                     }
                     _ => {
                         return Err(IntegrationError::ParsingError(
@@ -628,7 +625,7 @@ mod test {
         Swap Flash 4.0 5.0 NoteA NoteB white
         "#;
 
-        let expected_note_a = vec![
+        let note_a = vec![
             ChromaTrigger {
                 time: 0.,
                 duration: 0.,
@@ -675,7 +672,7 @@ mod test {
                 time: 4.,
                 duration: 1.,
                 start_color: HslColor {
-                    h: 0.,
+                    h: 0.5,
                     s: 0.,
                     l: 1.,
                 },
@@ -687,7 +684,7 @@ mod test {
             },
         ];
 
-        let expected_note_b = vec![
+        let note_b = vec![
             ChromaTrigger {
                 time: 0.,
                 duration: 0.,
@@ -746,9 +743,17 @@ mod test {
             },
         ];
 
+        let expected_chroma = ChromaTriggersData {
+            note_a,
+            note_b,
+            ..Default::default()
+        };
+
         let chroma = text_to_chroma(chroma).unwrap();
-        assert_eq!(chroma.note_a, expected_note_a);
-        assert_eq!(chroma.note_b, expected_note_b);
+
+        println!("Expected: {:#?}", expected_chroma);
+        println!("Got: {:#?}", chroma);
+        assert_eq!(expected_chroma, chroma);
     }
 
     #[test]
@@ -800,7 +805,7 @@ mod test {
                 time: 4.,
                 duration: 1.,
                 start_color: HslColor {
-                    h: 0.,
+                    h: 0.5,
                     s: 0.,
                     l: 1.,
                 },
@@ -1010,6 +1015,98 @@ NoteB 4.0 5.0 #ffffff #ff0000
         };
 
         let chroma = text_to_chroma(chroma).unwrap();
+        assert_eq!(chroma, expected_chroma);
+    }
+
+    #[test]
+    fn swap_repeats() {
+        let white_red = HslColor {
+            h: 0.0,
+            s: 0.0,
+            l: 1.0,
+        };
+        let white_blue = HslColor {
+            h: 2.0 / 3.0,
+            s: 0.0,
+            l: 1.0,
+        };
+        let red = HslColor {
+            h: 0.0,
+            s: 1.0,
+            l: 0.5,
+        };
+        let blue = HslColor {
+            h: 2.0 / 3.0,
+            s: 1.0,
+            l: 0.5,
+        };
+        let chroma = r#"
+        Start NoteA #ff0000
+        Start NoteB #0000ff
+        Repeat 3 interval 2.0
+        Swap Flash 2.0 3.0 NoteA NoteB #ffffff
+        EndRepeat
+        "#;
+        let note_a = vec![
+            ChromaTrigger {
+                time: 0.0,
+                duration: 0.0,
+                start_color: red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 2.0,
+                duration: 1.0,
+                start_color: white_blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 4.0,
+                duration: 1.0,
+                start_color: white_red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 6.0,
+                duration: 1.0,
+                start_color: white_blue,
+                end_color: blue,
+            },
+        ];
+        let note_b = vec![
+            ChromaTrigger {
+                time: 0.0,
+                duration: 0.0,
+                start_color: blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 2.0,
+                duration: 1.0,
+                start_color: white_red,
+                end_color: red,
+            },
+            ChromaTrigger {
+                time: 4.0,
+                duration: 1.0,
+                start_color: white_blue,
+                end_color: blue,
+            },
+            ChromaTrigger {
+                time: 6.0,
+                duration: 1.0,
+                start_color: white_red,
+                end_color: red,
+            },
+        ];
+        let expected_chroma = ChromaTriggersData {
+            note_a,
+            note_b,
+            ..Default::default()
+        };
+        let chroma = text_to_chroma(chroma).unwrap();
+        println!("Expected: {:#?}", expected_chroma);
+        println!("Got: {:#?}", chroma);
         assert_eq!(chroma, expected_chroma);
     }
 }
