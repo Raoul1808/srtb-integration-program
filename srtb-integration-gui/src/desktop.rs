@@ -139,7 +139,7 @@ impl App {
         }
     }
 
-    fn view(&self) -> iced::Element<Message> {
+    fn view(&self) -> iced::Element<'_, Message> {
         let integrator_label = text("Integrator Type");
         let integrator_combo_box = combo_box(
             &self.integrator_state,

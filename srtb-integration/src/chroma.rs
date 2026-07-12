@@ -501,7 +501,7 @@ fn text_to_chroma(content: &str) -> Result<ChromaTriggersData, IntegrationError>
         ));
     }
 
-    for (_, trigger_data) in chroma_data.iter_mut() {
+    for trigger_data in chroma_data.values_mut() {
         trigger_data.sort_by(|a, b| a.time.total_cmp(&b.time));
         for trigger in trigger_data.iter_mut() {
             trigger.ensure_smooth_transition();
