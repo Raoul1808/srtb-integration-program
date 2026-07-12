@@ -72,7 +72,7 @@ pub enum IntegrationError {
     Cancelled,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ParsingError {
     #[error("not enough arguments")]
     MissingArguments,
@@ -98,6 +98,9 @@ pub enum ParsingError {
     #[error("invalid note type: {0}")]
     InvalidNote(String),
 
+    #[error("duplicate note type: {0}")]
+    DuplicateNote(String),
+
     #[error("missing {0} EndRepeat instruction(s)")]
     MissingEndRepeat(usize),
 
@@ -115,4 +118,10 @@ pub enum ParsingError {
 
     #[error("unrecognized command: {0}")]
     UnrecognizedCommand(String),
+
+    #[error("not enough previous triggers to run an undo")]
+    MissingDataForUndo,
+
+    #[error("amount of note types differ")]
+    UnmatchedNoteTypesLength,
 }

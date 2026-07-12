@@ -115,7 +115,7 @@ impl From<RgbColor> for HslColor {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum ColorError {
     #[error("invalid color length: expected 6, found {0}")]
     InvalidSize(usize),
