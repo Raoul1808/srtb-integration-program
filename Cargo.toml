@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "2.3.1"
+version = "2.4.0"
 edition = "2021"
 authors = ["Raoul1808"]
 license = "MIT"
@@ -16,8 +16,8 @@ repository = "https://github.com/Raoul1808/srtb-integration-program"
 [workspace.dependencies]
 srtb-integration = { path = "srtb-integration" }
 
-rfd = "0.15.1"
-strum = { version = "0.26.3", features = ["derive"] }
+rfd = "0.17.2"
+strum = { version = "0.28.0", features = ["derive"] }
 
 [profile.release]
 opt-level = 3

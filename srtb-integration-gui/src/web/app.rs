@@ -20,7 +20,9 @@ pub fn program() -> iced::Result {
     console_log::init().expect("failed to initialize logger");
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
 
-    iced::run(App::title, App::update, App::view)
+    iced::application(App::default, App::update, App::view)
+        .title(App::title)
+        .run()
 }
 
 #[derive(Debug, Display, Default, Clone, Copy, PartialEq, Eq)]

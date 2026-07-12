@@ -14,7 +14,8 @@ use strum::Display;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub fn program() -> iced::Result {
-    iced::application(App::title, App::update, App::view)
+    iced::application(App::default, App::update, App::view)
+        .title(App::title)
         .window(iced::window::Settings {
             size: Size::new(360., 512.),
             ..Default::default()
